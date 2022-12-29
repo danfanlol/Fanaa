@@ -1386,14 +1386,15 @@ class BuiltInFunction(BaseFunction):
         value = exec_ctx.symbol_table.get("value")
         if not isinstance(list_,List):
             return res.failure(RTError(self.pos_start,self.pos_end,f"Tried to use append on a something that was not a list",exec_ctx))
+
         list_.elements.append(value)
         return RTResult().success(Number.null)
-    execute_append.arg_names = ['list','index']
+    execute_append.arg_names = ['list','value']
     def execute_index(self,exec_ctx):
         list_ = exec_ctx.symbol_table.get("list")
         index = exec_ctx.symbol_table.get("index")
         if not isinstance(list_,List):
-            return res.failure(RTError(self.pos_start,self.pos_end,f"Tried to use append on a something that was not a list",exec_ctx))
+            return res.failure(RTError(self.pos_start,self.pos_end,f"Tried to index something that was not a list",exec_ctx))
         if not isinstance(index,Number):
             return RTResult().failure(RTError(self.pos_start,self.pos_end,"Second argument must be a number ",exec_ctx))
         try:
@@ -1447,9 +1448,13 @@ class BuiltInFunction(BaseFunction):
             
             return RTResult().success(Number(num % num2))
         return RTResult().failure(RTError(self.pos_start,self.pos_end,f"Both parameters must be integers",exec_ctx))
-
-
     execute_modulo.arg_names = ['value','value2']
+    def execute_length(self,exec_ctx):
+        list_ = exec_ctx.symbol_table.get("list")
+        if isinstance(list_,List):
+            return RTResult().success(Number(len(list_.elements)))
+        return RTResult().failure(RTError(self.pos_start,self.pos_end,f"Parameter must be a list",exec_ctx))
+    execute_length.arg_names = ['list']
 BuiltInFunction.print = BuiltInFunction("print")
 BuiltInFunction.input = BuiltInFunction("input")  
 BuiltInFunction.pop = BuiltInFunction("pop")
@@ -1458,6 +1463,7 @@ BuiltInFunction.index = BuiltInFunction("index")
 BuiltInFunction.run = BuiltInFunction("run")
 BuiltInFunction.tostring = BuiltInFunction("tostring")
 BuiltInFunction.modulo = BuiltInFunction("modulo")
+BuiltInFunction.length = BuiltInFunction("length")
 
 #######################################
 # CONTEXT
@@ -1551,7 +1557,7 @@ class Interpreter:
         if res.should_return(): return res
         if node.skip_value_node:
             skip_value = res.register(self.visit(node.skip_value_node,context))
-            if res.should_return: return res
+            if res.should_return(): return res
         else:
             skip_value = Number(1)
         i = start_value.value
@@ -1577,7 +1583,7 @@ class Interpreter:
             if res.should_return(): return res
             if not condition.is_true(): break
             value = res.register(self.visit(node.body_node, context))
-            if res.should_return() and not res.loop_should_continue and not res.loop_should_break: return res
+            if res.should_return() and res.loop_should_continue == False and res.loop_should_break == False: return res
             if res.loop_should_continue:
                 continue
             if res.loop_should_break:
@@ -1680,7 +1686,10 @@ class Interpreter:
             if res.should_return(): return res
         
         return_value = res.register(value_to_call.execute(args))
-        if res.should_return(): return res
+  
+        if res.should_return():
+            #source of error
+            return res
         return_value = return_value.copy().set_pos(node.pos_start,node.pos_end).set_context(context)
         return res.success(return_value)
     def visit_ReturnNode(self,node,context):
@@ -1712,22 +1721,22 @@ global_symbol_table.set("INDEX",BuiltInFunction.index)
 global_symbol_table.set("RUN",BuiltInFunction.run) 
 global_symbol_table.set("TOSTRING",BuiltInFunction.tostring)
 global_symbol_table.set("MODULO",BuiltInFunction.modulo) 
+global_symbol_table.set("LENGTH",BuiltInFunction.length) 
 
 def run(fn, text):
-	# Generate tokens
-	lexer = Lexer(fn, text)
-	tokens, error = lexer.make_tokens()
-	if error: return None, error
-	#print(tokens)
-	# Generate AST
-	parser = Parser(tokens)
-	ast = parser.parse()
-	if ast.error: return None, ast.error
+    # Generate tokens
+    lexer = Lexer(fn, text)
+    tokens, error = lexer.make_tokens()
+    if error: return None, error
+    #print(tokens)
+    # Generate AST
+    parser = Parser(tokens)
+    ast = parser.parse()
+    if ast.error: return None, ast.error
 
-	# Run program
-	interpreter = Interpreter()
-	context = Context('<program>')
-	context.symbol_table = global_symbol_table
-	result = interpreter.visit(ast.node, context)
-
-	return result.value, result.error
+    # Run program
+    interpreter = Interpreter()
+    context = Context('<program>')
+    context.symbol_table = global_symbol_table
+    result = interpreter.visit(ast.node, context)
+    return result.value, result.error
