@@ -1,0 +1,39 @@
+#Sample code for a nested loop
+FROM i = 1 TO 4 DO;
+	FROM j = 1 TO 4 DO;
+		FROM k = 1 TO 4 DO PRINT(TOSTRING(i)+ " " + TOSTRING(j)+ " "  +TOSTRING(k))
+	END
+END
+
+#Code for Fizzbuzz
+FUN fizzbuzz(number)
+	FROM i = 1 TO number+1 DO
+		IF MODULO(i,15) == 0 DO
+			PRINT("Fizzbuzz")
+		ELIF MODULO(i,5) == 0 DO
+			PRINT("Buzz")
+		ELIF MODULO(i,3) == 0 DO
+			PRINT("Fizz")
+		ELSE 
+			PRINT(i) 
+		END
+	END
+		
+END
+	
+
+fizzbuzz(15)
+
+#Code for Fibonacci Sequence
+
+VAR a = [0,1]
+
+FROM i = 0 TO 10 DO;
+	VAR length = LENGTH(a)
+	VAR num = INDEX(a,length-1)
+	VAR num2 = INDEX(a,length-2)
+	APPEND(a,num+num2)
+END
+PRINT(a)
+
+
